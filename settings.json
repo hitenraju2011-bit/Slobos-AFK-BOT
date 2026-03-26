@@ -6,9 +6,9 @@
     "type": "offline"
   },
   "server": {
-    "ip": "lyanbois.aternos.me:43222",
+    "ip": "lyanbois.aternos.me",
     "port": 43222,
-    "version": "1.21.11"
+    "version": "1.21.1"
   },
   "position": {
     "enabled": true,
