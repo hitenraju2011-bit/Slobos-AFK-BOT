@@ -4,7 +4,6 @@ function randomMs(minMs, maxMs) {
 
 function setupLeaveRejoin(bot, createBot) {
     // Timers
-    let leaveTimer = null
     let jumpTimer = null
     let jumpOffTimer = null
     let reconnectTimer = null
@@ -24,11 +23,10 @@ function setupLeaveRejoin(bot, createBot) {
 
     function cleanup() {
         stopped = true
-        if (leaveTimer) clearTimeout(leaveTimer)
         if (jumpTimer) clearTimeout(jumpTimer)
         if (jumpOffTimer) clearTimeout(jumpOffTimer)
         if (reconnectTimer) clearTimeout(reconnectTimer)
-        leaveTimer = jumpTimer = jumpOffTimer = reconnectTimer = null
+        jumpTimer = jumpOffTimer = reconnectTimer = null
     }
 
     function scheduleNextJump() {
@@ -80,24 +78,7 @@ function setupLeaveRejoin(bot, createBot) {
         cleanup()
         stopped = false
 
-        // Stay connected: 2 minutes -> 15 minutes (More realistic AFK behavior)
-        // Stay connected 1-5 minutes before a scheduled leave/rejoin cycle.
-        const stayTime = randomMs(60000, 300000)
-
-        logThrottled(`[AFK] Will leave in ${Math.round(stayTime / 1000)} seconds`)
-
         scheduleNextJump()
-
-        leaveTimer = setTimeout(() => {
-            if (stopped) return
-            logThrottled('[AFK] Leaving server (timer)')
-            cleanup()
-            try {
-                bot.quit()
-            } catch (e) {
-                // ignore if already closed
-            }
-        }, stayTime)
     })
 
     // When the connection ends for ANY reason, just clean up our timers.
