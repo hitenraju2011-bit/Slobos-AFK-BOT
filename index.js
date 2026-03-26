@@ -378,14 +378,24 @@ function createBot() {
     });
 
     bot.loadPlugin(pathfinder);
+bot.on('connect', () => {
+  console.log('[Bot] 🔌 TCP connected');
+});
 
+bot.on('login', () => {
+  console.log('[Bot] 🔐 Logged in');
+});
+
+bot.on('spawn', () => {
+  console.log('[Bot] 📍 Spawn event triggered');
+});
     // Connection timeout - if no spawn in 60s, reconnect
     const connectionTimeout = setTimeout(() => {
       if (!botState.connected) {
         console.log('[Bot] Connection timeout - no spawn received');
         scheduleReconnect();
       }
-    }, 60000);
+    }, 90000);
 
     bot.once('spawn', () => {
       clearTimeout(connectionTimeout);
@@ -399,7 +409,7 @@ function createBot() {
         sendDiscordWebhook(`[+] **Connected** to \`${config.server.ip}\``, 0x4ade80); // Green
       }
 
-      const mcData = require('minecraft-data')(config.server.version);
+      const mcData = require('minecraft-data')(bot.version);
       const defaultMove = new Movements(bot, mcData);
       defaultMove.allowFreeMotion = false;
       defaultMove.canDig = false;
