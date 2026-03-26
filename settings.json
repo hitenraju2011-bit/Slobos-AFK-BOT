@@ -8,7 +8,7 @@
   "server": {
     "ip": "lyanbois.aternos.me",
     "port": 43222,
-    "version": "1.21.1"
+    "version": false
   },
   "position": {
     "enabled": true,
