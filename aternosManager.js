@@ -26,8 +26,9 @@ async function getServerId(cookies) {
     if (!servers || servers.length === 0) {
         throw new Error('No Aternos servers found on this account.');
     }
-    cachedServerId = servers[0].id;
-    console.log(`[Aternos] Found server: ${servers[0].name} (ID: ${cachedServerId})`);
+    const target = servers.find(s => s.name && s.name.toLowerCase() === 'lyanbois') || servers[0];
+    cachedServerId = target.id;
+    console.log(`[Aternos] Found server: ${target.name} (ID: ${cachedServerId})`);
     return cachedServerId;
 }
 
