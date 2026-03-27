@@ -4,6 +4,7 @@ const { GoalBlock } = goals;
 const config = require('./settings.json');
 const express = require('express');
 const http = require('http');
+const { startServer: aternosStartServer } = require('./aternosManager');
 
 // ============================================================
 // EXPRESS SERVER - Keep Render/Aternos alive
@@ -318,7 +319,11 @@ setInterval(() => {
 let bot = null;
 let activeIntervals = [];
 let reconnectTimeout = null;
+let connectionTimeout = null;
 let isReconnecting = false;
+let consecutiveFailures = 0;
+const ATERNOS_TRIGGER_FAILURES = 3; // trigger Aternos restart after this many consecutive failures
+const ATERNOS_BOOT_WAIT = 90 * 1000; // wait 90s for Aternos server to boot
 
 function clearAllIntervals() {
   console.log(`[Cleanup] Clearing ${activeIntervals.length} intervals`);
@@ -350,7 +355,11 @@ function createBot() {
     return;
   }
 
-  // Cleanup previous bot
+  // Cleanup previous bot and any stale timeouts
+  if (connectionTimeout) {
+    clearTimeout(connectionTimeout);
+    connectionTimeout = null;
+  }
   if (bot) {
     clearAllIntervals();
     try {
@@ -389,8 +398,9 @@ bot.on('login', () => {
 bot.on('spawn', () => {
   console.log('[Bot] 📍 Spawn event triggered');
 });
-    // Connection timeout - if no spawn in 60s, reconnect
-    const connectionTimeout = setTimeout(() => {
+    // Connection timeout - if no spawn in 90s, reconnect
+    connectionTimeout = setTimeout(() => {
+      connectionTimeout = null;
       if (!botState.connected) {
         console.log('[Bot] Connection timeout - no spawn received');
         scheduleReconnect();
@@ -402,6 +412,7 @@ bot.on('spawn', () => {
       botState.connected = true;
       botState.lastActivity = Date.now();
       botState.reconnectAttempts = 0;
+      consecutiveFailures = 0;
       isReconnecting = false;
 
       console.log(`[Bot] [+] Successfully spawned on server!`);
@@ -486,7 +497,19 @@ bot.on('spawn', () => {
     bot.on('error', (err) => {
       console.log(`[Bot] Error: ${err.message}`);
       botState.errors.push({ type: 'error', message: err.message, time: Date.now() });
-      // Don't immediately reconnect on error - let 'end' event handle it
+      // For connection-level errors (e.g. ECONNRESET, ECONNREFUSED) the 'end'
+      // event may not fire promptly — trigger reconnect immediately.
+      const isConnectError = err.code && (
+        err.code === 'ECONNRESET' ||
+        err.code === 'ECONNREFUSED' ||
+        err.code === 'ETIMEDOUT' ||
+        err.code === 'ENOTFOUND'
+      );
+      if (isConnectError && config.utils['auto-reconnect']) {
+        botState.connected = false;
+        clearAllIntervals();
+        scheduleReconnect();
+      }
     });
 
   } catch (err) {
@@ -496,16 +519,39 @@ bot.on('spawn', () => {
 }
 
 function scheduleReconnect() {
-  if (reconnectTimeout) {
-    clearTimeout(reconnectTimeout);
-  }
-
   if (isReconnecting) {
     return;
   }
 
+  if (reconnectTimeout) {
+    clearTimeout(reconnectTimeout);
+  }
+
   isReconnecting = true;
   botState.reconnectAttempts++;
+  consecutiveFailures++;
+
+  // After several consecutive failures the Aternos server is likely offline —
+  // try to start it automatically, then wait for it to boot before reconnecting.
+  if (consecutiveFailures >= ATERNOS_TRIGGER_FAILURES) {
+    consecutiveFailures = 0;
+    console.log('[Aternos] Multiple connection failures detected — attempting to start the Aternos server...');
+    aternosStartServer().then((started) => {
+      const wait = started ? ATERNOS_BOOT_WAIT : getReconnectDelay();
+      console.log(`[Bot] Reconnecting in ${wait / 1000}s...`);
+      reconnectTimeout = setTimeout(() => {
+        isReconnecting = false;
+        createBot();
+      }, wait);
+    }).catch((err) => {
+      console.log(`[Aternos] Start error: ${err.message}`);
+      reconnectTimeout = setTimeout(() => {
+        isReconnecting = false;
+        createBot();
+      }, getReconnectDelay());
+    });
+    return;
+  }
 
   const delay = getReconnectDelay();
   console.log(`[Bot] Reconnecting in ${delay / 1000}s (attempt #${botState.reconnectAttempts})`);
