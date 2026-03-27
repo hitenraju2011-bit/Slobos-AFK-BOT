@@ -323,7 +323,7 @@ let connectionTimeout = null;
 let isReconnecting = false;
 let consecutiveFailures = 0;
 const ATERNOS_TRIGGER_FAILURES = 3; // trigger Aternos restart after this many consecutive failures
-const ATERNOS_BOOT_WAIT = 90 * 1000; // wait 90s for Aternos server to boot
+const ATERNOS_BOOT_WAIT = 3 * 60 * 1000; // wait 3min for Aternos server to boot
 
 function clearAllIntervals() {
   console.log(`[Cleanup] Clearing ${activeIntervals.length} intervals`);
