@@ -536,9 +536,12 @@ function scheduleReconnect() {
   if (consecutiveFailures >= ATERNOS_TRIGGER_FAILURES) {
     consecutiveFailures = 0;
     console.log('[Aternos] Multiple connection failures detected — attempting to start the Aternos server...');
-    aternosStartServer().then((started) => {
-      const wait = started ? ATERNOS_BOOT_WAIT : getReconnectDelay();
-      console.log(`[Bot] Reconnecting in ${wait / 1000}s...`);
+    aternosStartServer().then((status) => {
+      // 'started' = start command sent, 'waiting' = already queued/starting,
+      // 'cooldown' = recently started (still booting), false = error/no creds
+      const shouldWait = status === 'started' || status === 'waiting' || status === 'cooldown';
+      const wait = shouldWait ? ATERNOS_BOOT_WAIT : getReconnectDelay();
+      console.log(`[Bot] Reconnecting in ${Math.round(wait / 1000)}s...`);
       reconnectTimeout = setTimeout(() => {
         isReconnecting = false;
         createBot();

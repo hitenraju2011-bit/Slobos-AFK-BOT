@@ -40,14 +40,14 @@ async function startServer() {
 
     if (isStarting) {
         console.log('[Aternos] Server start already in progress, skipping.');
-        return false;
+        return 'waiting';
     }
 
     const now = Date.now();
     if (now - lastStartAttempt < START_COOLDOWN) {
         const remaining = Math.round((START_COOLDOWN - (now - lastStartAttempt)) / 1000);
         console.log(`[Aternos] Cooldown active, waiting ${remaining}s before next start attempt.`);
-        return false;
+        return 'cooldown';
     }
 
     isStarting = true;
@@ -75,10 +75,19 @@ async function startServer() {
         console.log(`[Aternos] Start result: ${JSON.stringify(result)}`);
 
         if (result && result.success) {
-            console.log('[Aternos] Server is starting! Will reconnect in ~90 seconds.');
-            return true;
+            console.log('[Aternos] Server is starting! Will reconnect in ~3 minutes.');
+            return 'started';
         } else {
-            console.log(`[Aternos] Start failed or server already in a non-offline state: ${result?.message}`);
+            const msg = result?.message || '';
+            const isAlreadyStarting = msg.toLowerCase().includes('queue') ||
+                msg.toLowerCase().includes('starting') ||
+                msg.toLowerCase().includes('loading') ||
+                msg.toLowerCase().includes('not offline');
+            if (isAlreadyStarting) {
+                console.log(`[Aternos] Server is already starting/queued — will wait for it to come up.`);
+                return 'waiting';
+            }
+            console.log(`[Aternos] Start failed: ${msg}`);
             return false;
         }
     } catch (err) {
