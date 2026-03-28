@@ -1,0 +1,14 @@
+services:
+  - type: web
+    name: minecraft-afk-bot
+    env: node
+    plan: free
+    buildCommand: bash build.sh
+    startCommand: node index.js
+    envVars:
+      - key: ATERNOS_USERNAME
+        value: lyanbois
+      - key: NODE_ENV
+        value: production
+      - key: ATERNOS_PASSWORD
+        sync: false

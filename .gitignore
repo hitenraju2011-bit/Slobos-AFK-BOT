@@ -1,2 +1,4 @@
 node_modules/
 aternos-cookies.json
+.env
+*.log
